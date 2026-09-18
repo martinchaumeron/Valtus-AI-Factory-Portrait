@@ -562,33 +562,136 @@
     });
   }
 
-  function callBackend(payload, options){
-    var engine = backendEngine();
-    return engine ? engine.generate(payload, options || {}) : stubGenerate(payload, options);
+  // Moteur réel : l'événement onGenerate déclenche Portrait.lancer(), qui
+  // appelle POST /jobs puis interroge GET /jobs/{id} jusqu'au bout. L'avancement
+  // et le résultat reviennent par le modèle du widget, lié au store Appsmith.
+  //
+  // Le jeton identifie CE lancement : une génération précédente encore en vol
+  // ne peut pas résoudre celle-ci, et le rappel immédiat d'onModelChange (qui
+  // rejoue le modèle courant) est ignoré puisqu'il porte un autre jeton.
+  function appsmithGenerate(payload, options){
+    return new Promise(function(resolve, reject){
+      var jeton = String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+      var settled = false;
+      var unsubscribe = null;
+
+      function done(){
+        settled = true;
+        if (unsubscribe) unsubscribe();
+      }
+
+      var stop = window.appsmith.onModelChange(function(model){
+        if (settled || !model || model.jeton !== jeton) return;
+        if (model.progression && options && typeof options.onProgress === "function"){
+          options.onProgress(model.progression);
+        }
+        if (model.etat === "TERMINE"){
+          done();
+          resolve(model.resultat);
+        } else if (model.etat === "ECHEC"){
+          done();
+          reject({ code: "upstream_error", message: model.erreur || "" });
+        }
+      });
+      unsubscribe = stop;
+      if (settled) stop();
+
+      window.appsmith.triggerEvent("onGenerate", { payload: payload, jeton: jeton });
+    });
   }
 
+  function callBackend(payload, options){
+    var engine = backendEngine();
+    if (engine) return engine.generate(payload, options || {});
+    if (insideAppsmith()) return appsmithGenerate(payload, options || {});
+    return stubGenerate(payload, options);
+  }
+
+  // Corps de POST /jobs. Les clés `sources.transcript|cv|brief` et
+  // `commercial` sont celles attendues par le service. Les autres sources et
+  // les informations de dossier sont ajoutées à côté, dans la même forme :
+  // un service qui ne les connaît pas les ignore, et le jour où il les exploite
+  // il n'y a rien à changer ici.
   function buildPayload(){
-    var mission = {};
-    MISSION_FIELDS.forEach(function(field){ mission[field.key] = field.input.value.trim(); });
-    var sources = {};
-    SOURCES.forEach(function(source){ sources[source.key] = source.field.value.trim(); });
+    function texte(key){ return { text: sourceText(key) }; }
     return {
-      mission: mission,
-      sources: sources,
-      preferencesMail: els.prefs.value.trim()
+      sources: {
+        transcript: texte("transcription"),
+        cv: texte("cv"),
+        brief: texte("briefClient"),
+        analyse_externe: texte("analyseExterne"),
+        informations_complementaires: texte("informationsComplementaires")
+      },
+      commercial: {
+        contact: missionText("contact"),
+        societe: missionText("societe"),
+        lieu: missionText("lieu"),
+        taux: missionText("tauxJournalier"),
+        signataire: missionText("signataire")
+      },
+      dossier: {
+        candidat: missionText("candidat"),
+        poste: missionText("poste"),
+        reference: missionText("reference"),
+        preferences_mail: els.prefs.value.trim()
+      }
     };
   }
 
   // Le livrable attendu tient en trois sections. Si le backend renvoie autre
   // chose (une chaîne, un { text }), on le conserve tel quel sous « raw » pour
   // l'afficher intégralement plutôt que de perdre sa réponse.
+  // Le livrable attendu tient en trois sections, mais la réponse de GET
+  // /jobs/{id} les enveloppe peut-être (dans `result`, `output`, `data`…) et
+  // peut les nommer autrement. On les cherche donc par leur nom, accents et
+  // casse ignorés, à la racine puis un niveau plus bas — et si rien n'est
+  // reconnu, on conserve la réponse brute pour l'afficher entière plutôt que
+  // de la perdre.
+  var SECTION_ALIASES = {
+    competences: ["competences", "competencescles", "competenceskey", "skills", "keyskills"],
+    mail: ["mail", "email", "mailclient", "emailclient", "message"],
+    pitch: ["pitch", "pitchcandidat", "accroche", "resume"]
+  };
+
+  function normalizeKey(key){
+    return String(key)
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z]/g, "");
+  }
+
+  function findSections(source){
+    if (!source || typeof source !== "object") return null;
+    var found = {};
+    var any = false;
+    Object.keys(source).forEach(function(key){
+      var value = source[key];
+      if (typeof value !== "string" || !value.trim()) return;
+      var normalized = normalizeKey(key);
+      Object.keys(SECTION_ALIASES).forEach(function(section){
+        if (found[section]) return;
+        if (SECTION_ALIASES[section].indexOf(normalized) !== -1){
+          found[section] = value;
+          any = true;
+        }
+      });
+    });
+    return any ? found : null;
+  }
+
   function normalizeResult(result){
     if (typeof result === "string") return { raw: result };
     if (!result || typeof result !== "object") return { raw: String(result == null ? "" : result) };
-    var hasSection = SECTIONS.some(function(section){
-      return typeof result[section.key] === "string" && result[section.key].trim();
-    });
-    if (hasSection) return result;
+
+    var direct = findSections(result);
+    if (direct) return direct;
+
+    // Un niveau plus bas : { status: "DONE", result: { … } } et ses variantes.
+    var keys = Object.keys(result);
+    for (var i = 0; i < keys.length; i++){
+      var nested = findSections(result[keys[i]]);
+      if (nested) return nested;
+    }
+
     if (typeof result.text === "string") return { raw: result.text };
     return { raw: JSON.stringify(result, null, 2) };
   }
@@ -626,9 +729,12 @@
     }).catch(function(err){
       finishGenerate(state.hasGenerated ? "Régénérer le dossier" : "Générer le dossier");
       setStatus("error", "Échec de la génération");
+      // Le message renvoyé par le service est plus utile qu’une formule
+      // générique : Portrait le remonte déjà en français. La table ERROR_COPY
+      // ne sert que lorsqu il n’y a qu’un code.
       showToast(
-        (err && ERROR_COPY[err.code]) ||
         (err && err.message) ||
+        (err && ERROR_COPY[err.code]) ||
         "Une erreur est survenue pendant la génération.",
         "error"
       );
@@ -781,7 +887,6 @@
 
   function insideAppsmith(){
     return !!(window.appsmith
-      && typeof window.appsmith.updateModel === "function"
       && typeof window.appsmith.triggerEvent === "function"
       && typeof window.appsmith.onModelChange === "function");
   }
@@ -811,43 +916,15 @@
     return Promise.resolve({ status: "saved" });
   }
 
-  var APPSMITH_DOWNLOAD_TIMEOUT_MS = 20000;
-
   function saveViaAppsmith(filename, blob){
     return blobToDataUrl(blob).then(function(dataUrl){
-      // Le jeton identifie CE fichier : l'événement n'est émis qu'une fois
-      // l'aller-retour confirmé par Appsmith (le modèle nous revient), sinon
-      // le gestionnaire d'événement lirait encore la valeur précédente.
-      var token = String(Date.now()) + "-" + Math.random().toString(16).slice(2);
-      return new Promise(function(resolve, reject){
-        var settled = false;
-        var unsubscribe = null;
-        var timer = setTimeout(function(){
-          if (settled) return;
-          settled = true;
-          if (unsubscribe) unsubscribe();
-          reject(new Error("Appsmith n'a pas confirmé la réception du fichier"));
-        }, APPSMITH_DOWNLOAD_TIMEOUT_MS);
-
-        var stop = window.appsmith.onModelChange(function(model){
-          // onModelChange rappelle immédiatement avec le modèle courant, qui
-          // ne porte pas encore ce jeton : cet appel-là ne déclenche rien.
-          if (settled || !model || model.docxToken !== token) return;
-          settled = true;
-          clearTimeout(timer);
-          if (unsubscribe) unsubscribe();
-          window.appsmith.triggerEvent("onDownloadDocx");
-          resolve({ status: "sent" });
-        });
-        unsubscribe = stop;
-        if (settled) stop();
-
-        window.appsmith.updateModel({
-          docxData: dataUrl,
-          docxFilename: filename,
-          docxToken: token
-        });
+      // Les clés de cet objet sont directement lisibles dans la liaison de
+      // l'événement : {{download(docxData, docxFilename, '…')}}.
+      window.appsmith.triggerEvent("onDownloadDocx", {
+        docxData: dataUrl,
+        docxFilename: filename
       });
+      return { status: "sent" };
     });
   }
 
@@ -948,7 +1025,9 @@
   // Démarrage
   // ===============================================================
 
-  var isStubMode = !backendEngine();
+  // Le bandeau ne s'affiche que si rien n'est branché : ni moteur fourni, ni
+  // application Appsmith autour du widget.
+  var isStubMode = !backendEngine() && !insideAppsmith();
   els.demoBanner.hidden = !isStubMode;
 
   updateCounts();

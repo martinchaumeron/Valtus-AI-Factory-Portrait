@@ -1,11 +1,10 @@
 // Assemble le front à partir de custom-widget/{index.html,styles.css,app.js}
 // vers ses deux cibles :
 //
-//   1. pages/Page1/Page1.json — la page Appsmith, dont l'unique widget est un
-//      widget « Custom » qui porte les trois volets HTML / CSS / JS.
-//   2. dist/index.html        — le même front en un seul fichier autonome,
-//      ouvrable directement dans un navigateur pour relire ou tester sans
-//      Appsmith.
+//   1. pages/Page1/widgets/DossierAnalyse.json — le widget « Custom » de la
+//      page Appsmith, qui porte les trois volets HTML / CSS / JS.
+//   2. dist/index.html — le même front en un seul fichier autonome, ouvrable
+//      directement dans un navigateur pour relire ou tester sans Appsmith.
 //
 // Les trois fichiers de custom-widget/ sont la seule source de vérité : ces
 // deux cibles sont générées, ne les éditez pas à la main.
@@ -24,7 +23,7 @@ const css = read("custom-widget/styles.css");
 const js = read("custom-widget/app.js");
 
 // ---------------------------------------------------------------------------
-// 1. Page Appsmith
+// 1. Widget Appsmith
 // ---------------------------------------------------------------------------
 
 // La grille fixe d'Appsmith compte 64 colonnes et des lignes de 10 px. Le
@@ -32,17 +31,31 @@ const js = read("custom-widget/app.js");
 // étant longue, elle défile à l'intérieur de l'iframe du widget.
 const SNAP_COLUMNS = 64;
 const WIDGET_ROWS = 124;
-const WIDGET_NAME = "DossierCandidat";
-const WIDGET_ID = "dossiercandidat1";
+const WIDGET_NAME = "DossierAnalyse";
+const WIDGET_ID = "dossieranalyse01";
 
-// Le widget publie le .docx dans son modèle puis déclenche cet événement :
-// l'iframe du widget « Custom » est sandboxée sans allow-downloads, elle ne
-// peut donc pas déclencher le téléchargement elle-même (voir saveViaAppsmith
-// dans custom-widget/app.js).
+// Les deux échanges du widget vers l'application passent par des événements, et
+// les données voyagent dans l'objet de contexte de triggerEvent() — dont les
+// clés sont directement lisibles dans la liaison de l'événement.
+//
+// Pourquoi pas le modèle du widget dans ce sens : `defaultModel` est lié au
+// store pour le chemin inverse (application -> widget, voir plus bas). Or
+// Appsmith réinitialise une propriété meta dès que sa propriété « par défaut »
+// change ; tout ce que le widget écrirait avec updateModel() serait donc effacé
+// au premier storeValue() de Portrait.lancer(). L'objet de contexte, lui,
+// accompagne l'événement et ne peut pas être écrasé.
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const ON_DOWNLOAD_DOCX =
-  `{{download(${WIDGET_NAME}.model.docxData, ${WIDGET_NAME}.model.docxFilename, '${DOCX_MIME}')}}`;
+const ON_GENERATE = "{{Portrait.lancer(payload, jeton)}}";
+const ON_DOWNLOAD_DOCX = `{{download(docxData, docxFilename, '${DOCX_MIME}')}}`;
+
+// Chemin application -> widget : l'avancement et le résultat du traitement,
+// déposés dans le store par l'objet JS Portrait, arrivent dans le modèle du
+// widget par cette liaison.
+const DEFAULT_MODEL =
+  "{{ { etat: appsmith.store.etat, progression: appsmith.store.progression," +
+  " resultat: appsmith.store.result, erreur: appsmith.store.erreur," +
+  " jeton: appsmith.store.jeton } }}";
 
 const srcDoc = { html, css, js };
 
@@ -60,12 +73,13 @@ const widget = {
   // JavaScript standard (pas de JSX), il n'y a donc rien à transpiler.
   srcDoc,
   uncompiledSrcDoc: srcDoc,
-  defaultModel: "{}",
-  events: ["onDownloadDocx"],
+  defaultModel: DEFAULT_MODEL,
+  events: ["onGenerate", "onDownloadDocx"],
+  onGenerate: ON_GENERATE,
   onDownloadDocx: ON_DOWNLOAD_DOCX,
   theme: "{{appsmith.theme}}",
-  dynamicBindingPathList: [{ key: "theme" }],
-  dynamicTriggerPathList: [{ key: "onDownloadDocx" }],
+  dynamicBindingPathList: [{ key: "defaultModel" }, { key: "theme" }],
+  dynamicTriggerPathList: [{ key: "onDownloadDocx" }, { key: "onGenerate" }],
   dynamicHeight: "FIXED",
   minDynamicHeight: 4,
   maxDynamicHeight: 9000,
@@ -88,43 +102,26 @@ const widget = {
   parentRowSpace: 10,
 };
 
-const page = {
-  gitSyncId: "6aad2268898437a504d32b67_eeab6b01-094d-40e8-bfad-897837ae103e",
-  unpublishedPage: {
-    layouts: [
-      {
-        dsl: {
-          backgroundColor: "none",
-          bottomRow: 5000,
-          canExtend: true,
-          containerStyle: "none",
-          detachFromLayout: true,
-          dynamicBindingPathList: [],
-          dynamicTriggerPathList: [],
-          leftColumn: 0,
-          minHeight: 1292,
-          parentColumnSpace: 1,
-          parentRowSpace: 1,
-          rightColumn: 4896,
-          snapColumns: SNAP_COLUMNS,
-          snapRows: 124,
-          topRow: 0,
-          type: "CANVAS_WIDGET",
-          version: 94,
-          widgetId: "0",
-          widgetName: "MainContainer",
-          children: [widget],
-        },
-      },
-    ],
-    name: "Page1",
-    slug: "page1",
-  },
+// Appsmith écrit ses fichiers exportés avec les clés triées : on fait pareil,
+// pour qu'une synchronisation faite depuis l'éditeur ne produise pas un
+// remaniement complet du fichier.
+const sortKeys = (value) => {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value && typeof value === "object") {
+    return Object.keys(value)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = sortKeys(value[key]);
+        return acc;
+      }, {});
+  }
+  return value;
 };
 
+fs.mkdirSync(path.join(root, "pages/Page1/widgets"), { recursive: true });
 fs.writeFileSync(
-  path.join(root, "pages/Page1/Page1.json"),
-  JSON.stringify(page, null, 2) + "\n",
+  path.join(root, "pages/Page1/widgets/" + WIDGET_NAME + ".json"),
+  JSON.stringify(sortKeys(widget), null, 2) + "\n",
 );
 
 // ---------------------------------------------------------------------------
@@ -132,7 +129,8 @@ fs.writeFileSync(
 // ---------------------------------------------------------------------------
 // Même ordre d'assemblage que le widget « Custom » d'Appsmith (le balisage,
 // puis le module JS, puis la feuille de style) pour que les deux cibles se
-// comportent à l'identique.
+// comportent à l'identique. Hors Appsmith, le front bascule de lui-même en
+// mode démonstration : aucun appel n'est émis.
 const standalone = `<!doctype html>
 <html lang="fr">
 <head>
@@ -156,5 +154,5 @@ fs.mkdirSync(path.join(root, "dist"), { recursive: true });
 fs.writeFileSync(path.join(root, "dist/index.html"), standalone);
 
 const kb = (s) => (Buffer.byteLength(s, "utf8") / 1024).toFixed(1) + " Kio";
-console.log(`pages/Page1/Page1.json  (html ${kb(html)}, css ${kb(css)}, js ${kb(js)})`);
-console.log(`dist/index.html         ${kb(standalone)}`);
+console.log("pages/Page1/widgets/" + WIDGET_NAME + ".json  (html " + kb(html) + ", css " + kb(css) + ", js " + kb(js) + ")");
+console.log("dist/index.html                          " + kb(standalone));
