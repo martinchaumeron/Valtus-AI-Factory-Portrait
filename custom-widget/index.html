@@ -1,4 +1,3 @@
-
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" onerror="window.__pdfjsFailed=true"></script>
@@ -14,78 +13,100 @@
   <div class="inner">
     <div>
       <p class="kicker">Valtus · Executive Search &amp; Management de Transition</p>
-      <h1>Générateur de dossier d'analyse consolidé</h1>
-      <p class="sub">De la retranscription d'entretien au dossier de présentation candidat prêt à envoyer au client.</p>
+      <h1>Générateur de dossier candidat</h1>
+      <p class="sub">Toutes les sources en une seule fois. Le backend produit les compétences clés, le mail client et le pitch.</p>
     </div>
     <span class="status-chip" data-state="idle" id="statusChip"><span class="dot"></span><span id="statusLabel">En attente</span></span>
   </div>
-  <p class="demo-banner" id="demoBanner"><span aria-hidden="true">⚠</span> <strong>Mode démonstration.</strong> Aucun moteur de génération n'est branché : les boutons « Générer » produisent un texte d'exemple explicitement identifié comme tel. Voir <code>custom-widget/README.md</code> pour le branchement.</p>
+  <p class="demo-banner" id="demoBanner"><span aria-hidden="true">⚠</span> <strong>Mode démonstration.</strong> Aucun backend n'est branché : le bouton « Générer » produit un texte d'exemple explicitement identifié comme tel. Voir <code>custom-widget/README.md</code> pour le branchement.</p>
 </header>
 
 <div class="shell">
 
-  <nav class="stepnav" aria-label="Étapes du dossier">
-    <a class="step-link active" href="#etape1" aria-current="true">Étape 1 · Dossier d'analyse consolidé</a>
-    <a class="step-link" href="#etape2" aria-current="false">Étape 2 · Dossier de présentation candidat</a>
-  </nav>
-
-  <section class="step" id="etape1" aria-labelledby="etape1Title">
-  <div class="step-head">
-    <p class="step-index">Étape 1</p>
-    <h2 class="step-title" id="etape1Title">Dossier d'analyse consolidé</h2>
-    <p class="step-sub">De la retranscription brute d'entretien au dossier d'analyse factuel, exportable en Word.</p>
-  </div>
-
-  <div class="mission">
-    <label><span>Candidat</span><input id="fieldCandidate" type="text" placeholder="Nom du candidat" autocomplete="off"></label>
-    <label><span>Mission / Poste ciblé</span><input id="fieldRole" type="text" placeholder="Ex. Directeur Général, Directrice Industrielle…" autocomplete="off"></label>
-    <label><span>Référence dossier</span><input id="fieldRef" type="text" placeholder="Ex. VLT-2026-014" autocomplete="off"></label>
+  <div class="mission mission-4">
+    <label><span>Candidat</span><input id="fieldCandidat" type="text" placeholder="Nom du candidat" autocomplete="off"></label>
+    <label><span>Mission / Poste ciblé</span><input id="fieldPoste" type="text" placeholder="Ex. Directeur Général" autocomplete="off"></label>
+    <label><span>Référence dossier</span><input id="fieldReference" type="text" placeholder="Ex. VLT-2026-014" autocomplete="off"></label>
+    <label><span>Société cliente</span><input id="fieldSociete" type="text" placeholder="Ex. Groupe Meridia" autocomplete="off"></label>
+    <label><span>Contact client</span><input id="fieldContact" type="text" placeholder="Ex. Madame Lefranc" autocomplete="off"></label>
+    <label><span>Lieu de mission</span><input id="fieldLieu" type="text" placeholder="Ex. Lyon" autocomplete="off"></label>
+    <label><span>Taux journalier (€ HT/j)</span><input id="fieldTaux" type="text" placeholder="Ex. 950" autocomplete="off"></label>
+    <label><span>Signataire</span><input id="fieldSignataire" type="text" placeholder="Votre nom" autocomplete="off"></label>
   </div>
 
   <div class="workspace">
 
-    <!-- LEFT: sources -->
+    <!-- GAUCHE : toutes les sources du traitement -->
     <section>
       <p class="col-title">Sources</p>
       <div class="sources">
 
         <div class="panel" data-required="true">
           <div class="panel-head">
-            <h2>Retranscription d'entretien <small>analysée par le LLM</small></h2>
+            <h2>Retranscription d'entretien <small>requis</small></h2>
             <div class="panel-actions">
-              <button class="btn-file" type="button" data-target="transcript">Importer un fichier</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="transcript" hidden>
+              <button class="btn-file" type="button" data-target="srcTranscription">Importer un fichier</button>
+              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="srcTranscription" hidden>
             </div>
           </div>
-          <textarea id="transcript" placeholder="Collez ici la retranscription brute de l'entretien candidat (verbatim, notes de l'entretien)…"></textarea>
-          <div class="panel-foot">
-            <span id="transcriptCount">0 caractère</span>
-            <span id="transcriptWarn"></span>
+          <textarea id="srcTranscription" placeholder="Collez ici la retranscription brute de l'entretien candidat (verbatim, notes de l'entretien), ou importez un fichier .docx / .pdf / .txt / .md."></textarea>
+          <div class="panel-foot"><span id="srcTranscriptionCount">0 caractère</span></div>
+        </div>
+
+        <div class="panel" data-required="true">
+          <div class="panel-head">
+            <h2>CV complet du candidat <small>requis</small></h2>
+            <div class="panel-actions">
+              <button class="btn-file" type="button" data-target="srcCv">Importer un fichier</button>
+              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="srcCv" hidden>
+            </div>
           </div>
+          <textarea id="srcCv" placeholder="Collez ici le texte complet du CV, ou importez un fichier."></textarea>
+          <div class="panel-foot"><span id="srcCvCount">0 caractère</span></div>
         </div>
 
         <div class="panel">
           <div class="panel-head">
-            <h2>Analyse externe des compétences <small>reprise telle quelle</small></h2>
+            <h2>Analyse externe des compétences <small>optionnel</small></h2>
             <div class="panel-actions">
-              <button class="btn-file" type="button" data-target="skills">Importer un fichier</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="skills" hidden>
+              <button class="btn-file" type="button" data-target="srcAnalyse">Importer un fichier</button>
+              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="srcAnalyse" hidden>
             </div>
           </div>
-          <textarea id="skills" placeholder="Collez ici l'analyse externe des compétences (assessment, cabinet tiers…). Ce texte sera inséré sans reformulation."></textarea>
-          <div class="panel-foot"><span id="skillsCount">0 caractère</span></div>
+          <textarea id="srcAnalyse" placeholder="Collez ici l'analyse externe des compétences (assessment, cabinet tiers…)."></textarea>
+          <div class="panel-foot"><span id="srcAnalyseCount">0 caractère</span></div>
         </div>
 
         <div class="panel">
           <div class="panel-head">
-            <h2>Informations complémentaires <small>reprise telle quelle</small></h2>
+            <h2>Informations complémentaires <small>optionnel</small></h2>
             <div class="panel-actions">
-              <button class="btn-file" type="button" data-target="complementary">Importer un fichier</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="complementary" hidden>
+              <button class="btn-file" type="button" data-target="srcComplementaires">Importer un fichier</button>
+              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="srcComplementaires" hidden>
             </div>
           </div>
-          <textarea id="complementary" placeholder="Collez ici le mail ou document complémentaire transmis par le candidat. Ce texte sera inséré sans reformulation."></textarea>
-          <div class="panel-foot"><span id="complementaryCount">0 caractère</span></div>
+          <textarea id="srcComplementaires" placeholder="Collez ici le mail ou le document complémentaire transmis par le candidat."></textarea>
+          <div class="panel-foot"><span id="srcComplementairesCount">0 caractère</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Brief de mission client <small>optionnel</small></h2>
+            <div class="panel-actions">
+              <button class="btn-file" type="button" data-target="srcBrief">Importer un fichier</button>
+              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="srcBrief" hidden>
+            </div>
+          </div>
+          <textarea id="srcBrief" placeholder="Collez ici le brief de mission transmis par le client (contexte, enjeux, priorités)."></textarea>
+          <div class="panel-foot"><span id="srcBriefCount">0 caractère</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Vos préférences de rédaction <small>optionnel — mémorisé sur cet appareil</small></h2>
+          </div>
+          <textarea id="prefs" class="compact" rows="3" placeholder="Ex. : signe toujours « Bien à vous » plutôt que « Très cordialement » ; ajoute mon téléphone sous mon nom ; évite les phrases de plus de 20 mots."></textarea>
+          <div class="panel-foot"><span>Transmis au backend à chaque génération.</span></div>
         </div>
 
         <div class="generate-row">
@@ -93,20 +114,25 @@
             <span class="spinner"></span>
             <span id="generateLabel">Générer le dossier</span>
           </button>
-          <span class="generate-hint" id="generateHint">Le LLM n'analyse que la retranscription d'entretien.</span>
+          <span class="generate-hint" id="generateHint">Toutes les sources partent en une seule fois ; le backend se charge de l'analyse.</span>
         </div>
 
       </div>
     </section>
 
-    <!-- RIGHT: result -->
+    <!-- DROITE : le livrable -->
     <section>
       <p class="col-title">Aperçu du document</p>
       <div class="result-panel">
         <div class="result-toolbar">
-          <h2>Dossier d'analyse consolidé</h2>
-          <button class="btn-download" id="downloadBtn" type="button" disabled>Télécharger le DOCX</button>
+          <h2>Dossier de présentation candidat</h2>
+          <div class="panel-actions">
+            <button class="btn-download btn-secondary" id="copyBtn" type="button" disabled>Copier le mail</button>
+            <button class="btn-download btn-secondary" id="sendBtn" type="button" disabled>Envoyer par email</button>
+            <button class="btn-download" id="downloadBtn" type="button" disabled>Télécharger le DOCX</button>
+          </div>
         </div>
+        <p class="ai-warning" id="aiWarning" hidden><span class="icon" aria-hidden="true">⚠</span><span><strong>Contenu généré par IA.</strong> Relisez impérativement l'intégralité du dossier et du mail avant tout envoi au client.</span></p>
         <div class="doc-scroll">
           <div class="doc-page" id="docPage"></div>
         </div>
@@ -116,111 +142,6 @@
 
   </div>
 
-  </section>
-
-  <section class="step" id="etape2" aria-labelledby="etape2Title">
-  <div class="step-head">
-    <p class="step-index">Étape 2</p>
-    <h2 class="step-title" id="etape2Title">Dossier de présentation candidat</h2>
-    <p class="step-sub">Le dossier de l'Étape 1 croisé avec le CV et le brief client, jusqu'au mail prêt à envoyer.</p>
-  </div>
-
-  <div class="mission mission-5">
-    <label><span>Société cliente</span><input id="t2Societe" type="text" placeholder="Ex. Groupe Meridia" autocomplete="off"></label>
-    <label><span>Contact client</span><input id="t2Contact" type="text" placeholder="Ex. Madame Lefranc" autocomplete="off"></label>
-    <label><span>Lieu de mission</span><input id="t2Lieu" type="text" placeholder="Ex. Lyon" autocomplete="off"></label>
-    <label><span>Taux journalier (€ HT/j)</span><input id="t2Taux" type="text" placeholder="Ex. 950" autocomplete="off"></label>
-    <label><span>Signataire</span><input id="t2Signataire" type="text" placeholder="Votre nom" autocomplete="off"></label>
-  </div>
-
-  <div class="workspace">
-
-    <!-- LEFT: sources -->
-    <section>
-      <p class="col-title">Sources</p>
-      <div class="sources">
-
-        <div class="panel" data-required="true">
-          <div class="panel-head">
-            <h2>Dossier candidat <small>issu de l'Étape 1 — preuve primaire</small></h2>
-            <div class="panel-actions">
-              <button class="btn-file" type="button" id="t2SyncBtn" style="white-space:nowrap" title="Reprendre le contenu actuel de l'Étape 1">↻ Sync.</button>
-              <button class="btn-file" type="button" data-target="t2Dossier">Importer</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="t2Dossier" hidden>
-            </div>
-          </div>
-          <textarea id="t2Dossier" placeholder="Rempli automatiquement depuis l'Étape 1, ou collez/importez un dossier candidat (synthèse d'entretien + analyse externe + informations complémentaires)."></textarea>
-          <div class="panel-foot"><span id="t2DossierCount">0 caractère</span></div>
-        </div>
-
-        <div class="panel" data-required="true">
-          <div class="panel-head">
-            <h2>CV complet du candidat <small>preuve primaire</small></h2>
-            <div class="panel-actions">
-              <button class="btn-file" type="button" data-target="t2Cv">Importer</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="t2Cv" hidden>
-            </div>
-          </div>
-          <textarea id="t2Cv" placeholder="Collez ici le texte complet du CV, ou importez un fichier .docx / .pdf / .txt / .md."></textarea>
-          <div class="panel-foot"><span id="t2CvCount">0 caractère</span></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <h2>Brief de mission client <small>jamais une preuve</small></h2>
-            <div class="panel-actions">
-              <button class="btn-file" type="button" data-target="t2Brief">Importer</button>
-              <input type="file" accept=".txt,.md,.docx,.pdf" data-file-for="t2Brief" hidden>
-            </div>
-          </div>
-          <textarea id="t2Brief" placeholder="Collez ici le brief de mission transmis par le client (contexte, enjeux, priorités), ou importez un fichier."></textarea>
-          <div class="panel-foot"><span id="t2BriefCount">0 caractère</span></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <h2>Vos préférences pour le mail <small>optionnel — mémorisé sur cet appareil</small></h2>
-          </div>
-          <textarea id="t2CustomPrefs" class="compact" placeholder="Ex. : signe toujours « Bien à vous » plutôt que « Très cordialement » ; ajoute mon téléphone sous mon nom ; évite les phrases de plus de 20 mots." rows="3"></textarea>
-          <div class="panel-foot"><span>Appliqué à chaque génération du mail, sans jamais remplacer sa structure imposée.</span></div>
-        </div>
-
-        <div class="generate-row">
-          <button class="btn-primary" id="t2GenerateBtn" type="button">
-            <span class="spinner"></span>
-            <span id="t2GenerateLabel">Générer le dossier</span>
-          </button>
-          <span class="generate-hint" id="t2GenerateHint">Seuls le CV et la synthèse d'entretien démontrent une compétence.</span>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- RIGHT: result -->
-    <section>
-      <p class="col-title">Aperçu du dossier</p>
-      <div class="result-panel">
-        <div class="result-toolbar">
-          <h2>Dossier de présentation candidat</h2>
-          <div class="panel-actions">
-            <button class="btn-download btn-secondary" id="t2CopyBtn" type="button" disabled>Copier le mail client</button>
-            <button class="btn-download btn-secondary" id="t2SendBtn" type="button" disabled>Envoyer par email</button>
-            <button class="btn-download" id="t2DownloadBtn" type="button" disabled>Télécharger le DOCX</button>
-          </div>
-        </div>
-        <p class="ai-warning" id="t2AiWarning" hidden><span class="icon" aria-hidden="true">⚠</span><span><strong>Contenu généré par IA.</strong> Relisez impérativement l'intégralité du mail et du dossier avant tout envoi au client.</span></p>
-        <div class="doc-scroll">
-          <div class="doc-page" id="t2DocPage"></div>
-        </div>
-      </div>
-      <p class="foot-note">Le LLM effectue l'analyse croisée complète en interne pour garantir la traçabilité, mais seuls les compétences clés et le mail client sont affichés et exportés.</p>
-    </section>
-
-  </div>
-
-  </section>
-
 </div>
 
 <div class="toast" id="toast"></div>
-

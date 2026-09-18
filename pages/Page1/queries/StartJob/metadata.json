@@ -11,7 +11,7 @@
           "value": "application/json"
         }
       ],
-      "body": "{\n  \"sources\": {\n    \"transcript\": { \"text\": {{ JSON.stringify(Transcript_Input.text) }} },\n    \"cv\":         { \"text\": {{ JSON.stringify(CV_Input.text) }} },\n    \"brief\":      { \"text\": {{ JSON.stringify(Brief_Input.text) }} }\n  },\n  \"commercial\": {\n    \"contact\":    {{ JSON.stringify(Contact_Input.text) }},\n    \"societe\":    {{ JSON.stringify(Societe_Input.text) }},\n    \"lieu\":       {{ JSON.stringify(Lieu_Input.text) }},\n    \"taux\":       {{ JSON.stringify(Taux_Input.text) }},\n    \"signataire\": {{ JSON.stringify(Signataire_Input.text) }}\n  }\n}",
+      "body": "{{ this.params.payload }}",
       "bodyFormData": [],
       "encodeParamsToggle": true,
       "formData": {
