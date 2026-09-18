@@ -32,8 +32,8 @@ const js = read("custom-widget/app.js");
 // étant longue, elle défile à l'intérieur de l'iframe du widget.
 const SNAP_COLUMNS = 64;
 const WIDGET_ROWS = 124;
-const WIDGET_NAME = "DossierAnalyse";
-const WIDGET_ID = "dossieranalyse01";
+const WIDGET_NAME = "DossierCandidat";
+const WIDGET_ID = "dossiercandidat1";
 
 // Le widget publie le .docx dans son modèle puis déclenche cet événement :
 // l'iframe du widget « Custom » est sandboxée sans allow-downloads, elle ne
@@ -138,7 +138,7 @@ const standalone = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Dossier d'analyse consolidé — Valtus</title>
+<title>Dossier candidat — Valtus</title>
 </head>
 <body>
 ${html}
