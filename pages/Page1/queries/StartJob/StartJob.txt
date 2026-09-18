@@ -1,0 +1,14 @@
+{
+  "sources": {
+    "transcript": { "text": {{ JSON.stringify(Transcript_Input.text) }} },
+    "cv":         { "text": {{ JSON.stringify(CV_Input.text) }} },
+    "brief":      { "text": {{ JSON.stringify(Brief_Input.text) }} }
+  },
+  "commercial": {
+    "contact":    {{ JSON.stringify(Contact_Input.text) }},
+    "societe":    {{ JSON.stringify(Societe_Input.text) }},
+    "lieu":       {{ JSON.stringify(Lieu_Input.text) }},
+    "taux":       {{ JSON.stringify(Taux_Input.text) }},
+    "signataire": {{ JSON.stringify(Signataire_Input.text) }}
+  }
+}
